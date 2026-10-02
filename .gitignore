@@ -1,0 +1,13 @@
+*.xlsx
+*.xls
+*.csv
+*.dcu
+*.~pas
+*.~dfm
+*.cfg
+*.ssa
+*.tmp
+*.bak
+*.compiled
+*.log
+*.ppu
