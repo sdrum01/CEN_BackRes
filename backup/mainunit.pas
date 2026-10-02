@@ -1,3 +1,6 @@
+// Thanks for Icons
+// https://www.flaticon.com
+
 unit mainUnit;
 
 {$mode objfpc}{$H+}

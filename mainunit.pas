@@ -9,7 +9,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  Buttons, Process, ipcezcrypt, ipctypes, IniFiles;
+  Buttons, Process, ipcezcrypt, ipctypes;
 
 type
 
