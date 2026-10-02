@@ -766,7 +766,7 @@ object mainForm: TmainForm
       Anchors = [akTop, akLeft, akRight]
       EditLabel.Height = 15
       EditLabel.Width = 556
-      EditLabel.Caption = 'Source Database File (.fdb)'
+      EditLabel.Caption = 'Source Database File (.fdb) or ALIAS'
       EditLabel.ParentColor = False
       TabOrder = 0
       Text = 'cenadco.fdb'

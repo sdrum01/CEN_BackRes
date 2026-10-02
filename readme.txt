@@ -2,6 +2,9 @@
 
 V1.0.0.0
 
+Icons from https://www.flaticon.com
+Many thanks!
+
 Das Tool "CEN_BackRes.exe" erlaubt das Sichern und WIederherstellen der Datenbank mit Hilfe des Tools GBAK
 
 
