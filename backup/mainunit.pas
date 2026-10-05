@@ -1,5 +1,4 @@
-// Thanks for Icons
-// https://www.flaticon.com
+// Icons provided by https://www.flaticon.com
 
 unit mainUnit;
 
@@ -9,7 +8,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  Buttons, Process, ipcezcrypt, ipctypes, IniFiles;
+  Buttons, Process, ipcezcrypt, ipctypes;
 
 type
 
@@ -27,6 +26,7 @@ type
     e_DbConfig: TLabeledEdit;
     gb_restore: TGroupBox;
     gb_backup: TGroupBox;
+    Label1: TLabel;
     le_hostname: TLabeledEdit;
     le_pathBackupDst: TLabeledEdit;
     le_pathBackupSrc: TLabeledEdit;
@@ -45,7 +45,15 @@ type
     procedure b_chooseRestoreSrcClick(Sender: TObject);
     procedure b_restoreClick(Sender: TObject);
     procedure cbLocalDbChange(Sender: TObject);
+    procedure e_DbConfigChange(Sender: TObject);
+    procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
+    procedure le_hostnameChange(Sender: TObject);
+    procedure le_pathBackupDstChange(Sender: TObject);
+    procedure le_pathBackupSrcChange(Sender: TObject);
+    procedure le_pathRestoreDstChange(Sender: TObject);
+    procedure le_pathRestoreSrcChange(Sender: TObject);
+    procedure le_portChange(Sender: TObject);
     procedure TimerProcessTimer(Sender: TObject);
 
   private
@@ -63,7 +71,8 @@ type
 
   public
     restoreDstFileName, backupDstFileName: string;
-    LogFile, OutputDir, BackupOrRestore: String;
+    LogFile, BackupOrRestore: String;
+
 
   end;
 
@@ -75,6 +84,8 @@ implementation
 {$R *.lfm}
 
 uses Ini;
+
+var iniSettings : TIniSettings;
 
 { TmainForm }
 
@@ -223,7 +234,7 @@ begin
   except
     on E: Exception do
     begin
-      showMessage('Error occured: '+#13#10+ E.Message);
+      showMessage('Error occured during grabbing Password: '+#13#10+ E.Message);
     end;
   end;
 end;
@@ -260,7 +271,7 @@ begin
         WriteLn(F1,sLog);
         CloseFile(F1);
    except
-     on E:Exception do ShowMessage(E.Message) ;
+     on E:Exception do ShowMessage('Error during writing Logfile: '+E.Message) ;
    end
  end;
 end;
@@ -268,6 +279,7 @@ end;
 procedure TmainForm.b_chooseRestoreDstClick(Sender: TObject);
 begin
   OpenDialog1.Filter := 'Firebird Database (*.fdb)|*.fdb';
+  OpenDialog1.InitialDir:= ExtractFilePath(le_pathRestoreDst.Text);
   if OpenDialog1.Execute then
   begin
     le_pathRestoreDst.Text:= OpenDialog1.FileName;
@@ -277,6 +289,7 @@ end;
 procedure TmainForm.b_chooseBackupSrcClick(Sender: TObject);
 begin
   OpenDialog1.Filter := 'Firebird Database (*.fdb)|*.fdb';
+  OpenDialog1.InitialDir:= ExtractFilePath(le_pathBackupSrc.Text);
   if OpenDialog1.Execute then
   begin
     le_pathBackupSrc.Text:= OpenDialog1.FileName;
@@ -287,17 +300,21 @@ end;
 procedure TmainForm.b_chooseDbConfigClick(Sender: TObject);
 begin
  OpenDialog1.Filter := 'Ini-Files (*.ini)|*.ini';
+ OpenDialog1.InitialDir:= ExtractFilePath(iniSettings.dbConfigFile);
  if OpenDialog1.Execute then
   begin
     dbConfigFile := OpenDialog1.FileName;
+    iniSettings.dbConfigFile := dbConfigFile;
     if(fileExists(dbConfigFile))then
     begin
       dbConfig := ReadCenadcoConfig(dbConfigFile);
       e_dbConfig.Text := dbConfig;
+      iniSettings.dbConfigString:=dbConfig;
     end else
     begin
       WriteLog('DBKonfig not found:'+dbConfig+', will take dbConfig String instead');
       dbConfig := e_dbConfig.Text;
+      iniSettings.dbConfigString:=dbConfig;
     end;
   end;
 end;
@@ -305,6 +322,7 @@ end;
 procedure TmainForm.b_chooseBackupDstClick(Sender: TObject);
 begin
   OpenDialog1.Filter := 'Firebird Backup (*.fbk)|*.fbk';
+  OpenDialog1.InitialDir:= ExtractFilePath(le_pathBackupDst.Text);
   if OpenDialog1.Execute then
   begin
     le_pathBackupDst.Text:= OpenDialog1.FileName;
@@ -319,6 +337,7 @@ end;
 procedure TmainForm.b_chooseRestoreSrcClick(Sender: TObject);
 begin
   OpenDialog1.Filter := 'Firebird Backup (*.fbk)|*.fbk';
+  OpenDialog1.InitialDir:= ExtractFilePath(le_pathRestoreSrc.Text);
   if OpenDialog1.Execute then
   begin
     le_pathRestoreSrc.Text:= OpenDialog1.FileName;
@@ -328,7 +347,7 @@ end;
 
 procedure TmainForm.StartRestore;
 var
-  dbUser, dbPassword : string;
+  dbUser, dbPassword, OutputDir: string;
 begin
 
   MemoLog.Clear;
@@ -339,6 +358,12 @@ begin
 
   //  holen des Benutzerlogins
   GetFBDBLogin(1,dbConfig,dbUser,dbPassword);
+
+  try
+    OutputDir := ExtractFilePath(iniSettings.restoreDstFdbFile);
+  except
+    ShowMessage('invalid Destination-File: ' + iniSettings.restoreDstFdbFile);
+  end;
 
 
 
@@ -440,14 +465,27 @@ begin
   begin
 
 
-    CurrentDirectory :=
-    IncludeTrailingPathDelimiter(
-      ExtractFilePath(Application.ExeName)
-    ) + 'firebird';
 
-    Executable := IncludeTrailingPathDelimiter(
-      ExtractFilePath(Application.ExeName)
-    ) + 'firebird\gbak.exe';
+
+    if DirectoryExists(iniSettings.fbPath) then
+    begin
+      CurrentDirectory := iniSettings.fbPath;
+      Executable := iniSettings.fbPath + '\gbak.exe';
+    end else
+    begin
+      showMessage('Firebird Directory does not exist: '+ iniSettings.fbPath + #10#13 + ' will take "'+IncludeTrailingPathDelimiter(
+        ExtractFilePath(Application.ExeName)
+      ) + 'firebird" instead');
+      CurrentDirectory :=
+      IncludeTrailingPathDelimiter(
+        ExtractFilePath(Application.ExeName)
+      ) + 'firebird';
+
+      Executable := IncludeTrailingPathDelimiter(
+        ExtractFilePath(Application.ExeName)
+      ) + 'firebird\gbak.exe';
+    end;
+
 
     { Restore }
     Parameters.Add('-c');
@@ -597,14 +635,33 @@ begin
 
   with GbakProcess do
   begin
-    CurrentDirectory :=
-    IncludeTrailingPathDelimiter(
-      ExtractFilePath(Application.ExeName)
-    ) + 'firebird';
+    //CurrentDirectory :=
+    //IncludeTrailingPathDelimiter(
+    //  ExtractFilePath(Application.ExeName)
+    //) + 'firebird';
+    //
+    //Executable := IncludeTrailingPathDelimiter(
+    //  ExtractFilePath(Application.ExeName)
+    //) + 'firebird\gbak.exe';
 
-    Executable := IncludeTrailingPathDelimiter(
-      ExtractFilePath(Application.ExeName)
-    ) + 'firebird\gbak.exe';
+    if DirectoryExists(iniSettings.fbPath) then
+    begin
+      CurrentDirectory := iniSettings.fbPath;
+      Executable := iniSettings.fbPath + '\gbak.exe';
+    end else
+    begin
+      showMessage('Firebird Directory does not exist: '+ iniSettings.fbPath + #10#13 + ' will take "'+IncludeTrailingPathDelimiter(
+        ExtractFilePath(Application.ExeName)
+      ) + 'firebird" instead');
+      CurrentDirectory :=
+      IncludeTrailingPathDelimiter(
+        ExtractFilePath(Application.ExeName)
+      ) + 'firebird';
+
+      Executable := IncludeTrailingPathDelimiter(
+        ExtractFilePath(Application.ExeName)
+      ) + 'firebird\gbak.exe';
+    end;
 
     { Restore }
     Parameters.Add('-b');
@@ -659,43 +716,100 @@ procedure TmainForm.cbLocalDbChange(Sender: TObject);
 begin
   le_hostname.Enabled:= not cbLocalDb.Checked;
   le_port.Enabled:= not cbLocalDb.Checked;
+  iniSettings.backupSrcLocal := cbLocalDb.Checked;
+end;
+
+procedure TmainForm.e_DbConfigChange(Sender: TObject);
+begin
+  iniSettings.dbConfigString:=e_DbConfig.Text;
+end;
+
+procedure TmainForm.FormClose(Sender: TObject; var CloseAction: TCloseAction);
+begin
+  WriteSettings(iniSettings);
 end;
 
 procedure TmainForm.FormCreate(Sender: TObject);
 begin
-
+ iniSettings := ReadSettings;
  BackupOrRestore := '';
  LogFile := ExtractFilePath(Application.exeName)+'\CEN_BackRes.log';
-  dbConfigFile := 'c:\Program Files (x86)\Cenadco\Cenadco.ini';
+ //dbConfigFile := 'c:\Program Files (x86)\Cenadco\Cenadco.ini';
+ dbConfigFile := iniSettings.dbConfigFile;
 
-  try
-      if(fileExists(dbConfigFile))then
-      begin
-        dbConfig := ReadCenadcoConfig(dbConfigFile);
-        e_dbConfig.Text := dbConfig;
-      end else
-      begin
-        WriteLog('DBKonfig not found:'+dbConfig+', will take dbConfig String instead');
-        dbConfig := e_dbConfig.Text;
-      end;
 
-    except
-      on E: Exception do
-      begin
-        WriteLog('Error during read DBKonfig: ' + E.Message);
-        dbConfig := e_dbConfig.Text;
-      end;
-    end;
+
+
+
+
     le_hostname.Enabled:= not cbLocalDb.Checked;
     le_port.Enabled:= not cbLocalDb.Checked;
 
-    { Ausgabeordner ermitteln }
-    OutputDir := IncludeTrailingPathDelimiter(
-      ExtractFilePath(Application.ExeName)
-    ) + 'output';
+    le_pathRestoreSrc.Text := iniSettings.restoreSrcFbkFile;
+    le_pathRestoreDst.Text:= iniSettings.restoreDstFdbFile;
 
-    le_pathRestoreDst.Text:= OutputDir+'\cenadco.fdb';
-    le_pathBackupSrc.Text :=OutputDir+'\cenadco.fdb';
+    le_pathBackupSrc.Text := iniSettings.backupSrcFdbFile;
+    le_pathBackupDst.Text:= iniSettings.backupDstFbkFile;
+
+    cbLocalDb.Checked := iniSettings.backupSrcLocal;
+    le_port.Text := IntToStr(iniSettings.backupSrcPort);
+    le_hostname.Text := iniSettings.backupSrcHostname;
+
+    if(trim(iniSettings.dbConfigString) <> '')then
+    begin
+      e_DbConfig.Text := iniSettings.dbConfigString;
+      dbConfig := iniSettings.dbConfigString;
+    end else
+    begin
+      try
+        if(fileExists(dbConfigFile))then
+        begin
+          dbConfig := ReadCenadcoConfig(dbConfigFile);
+          e_dbConfig.Text := dbConfig;
+        end else
+        begin
+          WriteLog('DBKonfig not found:'+dbConfig+', will take dbConfig String instead');
+          dbConfig := e_dbConfig.Text;
+        end;
+
+      except
+        on E: Exception do
+        begin
+          WriteLog('Error during read DBKonfig: ' + E.Message);
+          dbConfig := e_dbConfig.Text;
+        end;
+      end;
+    end;
+end;
+
+procedure TmainForm.le_hostnameChange(Sender: TObject);
+begin
+  iniSettings.backupSrcHostname:=le_hostname.Text;
+end;
+
+procedure TmainForm.le_pathBackupDstChange(Sender: TObject);
+begin
+  iniSettings.backupDstFbkFile := le_pathBackupDst.Text;
+end;
+
+procedure TmainForm.le_pathBackupSrcChange(Sender: TObject);
+begin
+  iniSettings.backupSrcFdbFile := le_pathBackupSrc.Text;
+end;
+
+procedure TmainForm.le_pathRestoreDstChange(Sender: TObject);
+begin
+ iniSettings.restoreDstFdbFile:= le_pathRestoreDst.Text;
+end;
+
+procedure TmainForm.le_pathRestoreSrcChange(Sender: TObject);
+begin
+  iniSettings.restoreSrcFbkFile:= le_pathRestoreSrc.Text;
+end;
+
+procedure TmainForm.le_portChange(Sender: TObject);
+begin
+  iniSettings.backupSrcPort:= StrToIntDef(le_port.Text,3051);
 end;
 
 procedure TmainForm.TimerProcessTimer(Sender: TObject);

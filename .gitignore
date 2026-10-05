@@ -11,3 +11,5 @@
 *.compiled
 *.log
 *.ppu
+
+/output
