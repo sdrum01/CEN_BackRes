@@ -39,8 +39,6 @@ var
   workingDir : string;
 begin
   Sett := TIniFile.Create(IniFile);
-
-
     workingDir := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName)) ;
 
   try
@@ -48,6 +46,9 @@ begin
     mySettings.dbConfigFile := Sett.ReadString('Main', 'dbConfigFile', 'c:\Program Files (x86)\Cenadco\Cenadco.ini');
     mySettings.dbConfigString := Sett.ReadString('Main', 'dbConfigString', '');
     mySettings.fbPath := Sett.ReadString('Main', 'path_firebird', workingDir +'firebird');
+
+    if not(DirectoryExists(mySettings.fbPath) then
+      mySettings.fbPath := workingDir +'firebird';
 
     mySettings.restoreSrcFbkFile := Sett.ReadString('Restore', 'source_backup', 'c:\Program Files (x86)\Cenadco\backup\cenadco.fbk');
     mySettings.restoreDstFdbFile := Sett.ReadString('Restore', 'destination_database', workingDir + 'output' +'\cenadco.fdb');
@@ -57,7 +58,6 @@ begin
     mySettings.backupSrcLocal := Sett.ReadBool('Backup', 'local', true);
     mySettings.backupSrcPort := Sett.ReadInteger('Backup', 'Port', 3051);
     mySettings.backupSrcHostname := Sett.ReadString('Backup', 'HostName', '127.0.0.1');
-
 
   finally
     Sett.Free;

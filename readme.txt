@@ -16,6 +16,8 @@ Für das Tool ist keine Installation nötig, aber folgende DLL-Dateien müssen s
 
 Die Pfade zur Datenbank und der Cenadco.ini können frei gewählt werden. 
 
+Die Settings werden in der Datei CEN_BackRes.ini gemerkt und können angepasst werden (z.B. um den Pfad zum Firebird anzupassen)
+
 -------------------------------------------------------
 
 Updates:

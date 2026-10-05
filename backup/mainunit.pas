@@ -18,6 +18,7 @@ type
     b_chooseDbConfig: TButton;
     b_chooseBackupDst: TButton;
     b_chooseBackupSrc: TButton;
+    b_chooseFbPath: TButton;
     b_restore: TButton;
     b_chooseRestoreSrc: TButton;
     b_chooseRestoreDst: TButton;
@@ -27,6 +28,7 @@ type
     gb_restore: TGroupBox;
     gb_backup: TGroupBox;
     Label1: TLabel;
+    le_fbPath: TLabeledEdit;
     le_hostname: TLabeledEdit;
     le_pathBackupDst: TLabeledEdit;
     le_pathBackupSrc: TLabeledEdit;
@@ -35,11 +37,13 @@ type
     le_pathRestoreDst: TLabeledEdit;
     MemoLog: TMemo;
     OpenDialog1: TOpenDialog;
+    SelectDirectoryDialog1: TSelectDirectoryDialog;
     TimerProcess: TTimer;
 
     procedure b_backupClick(Sender: TObject);
     procedure b_chooseBackupDstClick(Sender: TObject);
     procedure b_chooseDbConfigClick(Sender: TObject);
+    procedure b_chooseFbPathClick(Sender: TObject);
     procedure b_chooseRestoreDstClick(Sender: TObject);
     procedure b_chooseBackupSrcClick(Sender: TObject);
     procedure b_chooseRestoreSrcClick(Sender: TObject);
@@ -319,6 +323,16 @@ begin
   end;
 end;
 
+procedure TmainForm.b_chooseFbPathClick(Sender: TObject);
+begin
+  if SelectDirectoryDialog1.Execute then
+  begin
+    le_fbPath.Text:=SelectDirectoryDialog1.FileName;
+
+  end;
+  //OpenDialog1.InitialDir:= ExtractFilePath(le_pathRestoreSrc.Text);
+end;
+
 procedure TmainForm.b_chooseBackupDstClick(Sender: TObject);
 begin
   OpenDialog1.Filter := 'Firebird Backup (*.fbk)|*.fbk';
@@ -473,9 +487,10 @@ begin
       Executable := iniSettings.fbPath + '\gbak.exe';
     end else
     begin
-      showMessage('Firebird Directory does not exist: '+ iniSettings.fbPath + #10#13 + ' will take "'+IncludeTrailingPathDelimiter(
-        ExtractFilePath(Application.ExeName)
-      ) + 'firebird" instead');
+      //showMessage('Firebird Directory does not exist: '+ iniSettings.fbPath + #10#13 + ' will take "'+IncludeTrailingPathDelimiter(
+      //  ExtractFilePath(Application.ExeName)
+      //) + 'firebird" instead');
+
       CurrentDirectory :=
       IncludeTrailingPathDelimiter(
         ExtractFilePath(Application.ExeName)
@@ -650,9 +665,9 @@ begin
       Executable := iniSettings.fbPath + '\gbak.exe';
     end else
     begin
-      showMessage('Firebird Directory does not exist: '+ iniSettings.fbPath + #10#13 + ' will take "'+IncludeTrailingPathDelimiter(
-        ExtractFilePath(Application.ExeName)
-      ) + 'firebird" instead');
+      //showMessage('Firebird Directory does not exist: '+ iniSettings.fbPath + #10#13 + ' will take "'+IncludeTrailingPathDelimiter(
+      //  ExtractFilePath(Application.ExeName)
+      //) + 'firebird" instead');
       CurrentDirectory :=
       IncludeTrailingPathDelimiter(
         ExtractFilePath(Application.ExeName)
@@ -737,49 +752,46 @@ begin
  //dbConfigFile := 'c:\Program Files (x86)\Cenadco\Cenadco.ini';
  dbConfigFile := iniSettings.dbConfigFile;
 
+  le_fbPath.Text:= iniSettings.fbPath;
 
+  le_hostname.Enabled:= not cbLocalDb.Checked;
+  le_port.Enabled:= not cbLocalDb.Checked;
 
+  le_pathRestoreSrc.Text := iniSettings.restoreSrcFbkFile;
+  le_pathRestoreDst.Text:= iniSettings.restoreDstFdbFile;
 
+  le_pathBackupSrc.Text := iniSettings.backupSrcFdbFile;
+  le_pathBackupDst.Text:= iniSettings.backupDstFbkFile;
 
+  cbLocalDb.Checked := iniSettings.backupSrcLocal;
+  le_port.Text := IntToStr(iniSettings.backupSrcPort);
+  le_hostname.Text := iniSettings.backupSrcHostname;
 
-    le_hostname.Enabled:= not cbLocalDb.Checked;
-    le_port.Enabled:= not cbLocalDb.Checked;
+  if(trim(iniSettings.dbConfigString) <> '')then
+  begin
+    e_DbConfig.Text := iniSettings.dbConfigString;
+    dbConfig := iniSettings.dbConfigString;
+  end else
+  begin
+    try
+      if(fileExists(dbConfigFile))then
+      begin
+        dbConfig := ReadCenadcoConfig(dbConfigFile);
+        e_dbConfig.Text := dbConfig;
+      end else
+      begin
+        WriteLog('DBKonfig not found:'+dbConfig+', will take dbConfig String instead');
+        dbConfig := e_dbConfig.Text;
+      end;
 
-    le_pathRestoreSrc.Text := iniSettings.restoreSrcFbkFile;
-    le_pathRestoreDst.Text:= iniSettings.restoreDstFdbFile;
-
-    le_pathBackupSrc.Text := iniSettings.backupSrcFdbFile;
-    le_pathBackupDst.Text:= iniSettings.backupDstFbkFile;
-
-    cbLocalDb.Checked := iniSettings.backupSrcLocal;
-    le_port.Text := IntToStr(iniSettings.backupSrcPort);
-    le_hostname.Text := iniSettings.backupSrcHostname;
-
-    if(trim(iniSettings.dbConfigString) <> '')then
-    begin
-      e_DbConfig.Text := iniSettings.dbConfigString;
-      dbConfig := iniSettings.dbConfigString;
-    end else
-    begin
-      try
-        if(fileExists(dbConfigFile))then
-        begin
-          dbConfig := ReadCenadcoConfig(dbConfigFile);
-          e_dbConfig.Text := dbConfig;
-        end else
-        begin
-          WriteLog('DBKonfig not found:'+dbConfig+', will take dbConfig String instead');
-          dbConfig := e_dbConfig.Text;
-        end;
-
-      except
-        on E: Exception do
-        begin
-          WriteLog('Error during read DBKonfig: ' + E.Message);
-          dbConfig := e_dbConfig.Text;
-        end;
+    except
+      on E: Exception do
+      begin
+        WriteLog('Error during read DBKonfig: ' + E.Message);
+        dbConfig := e_dbConfig.Text;
       end;
     end;
+  end;
 end;
 
 procedure TmainForm.le_hostnameChange(Sender: TObject);
